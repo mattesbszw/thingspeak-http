@@ -2,6 +2,9 @@
 
 #include "tscert.h"
 
+#include <Wire.h>
+#include <Adafruit_SSD1306.h>
+
 #include <DHT.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -18,9 +21,15 @@ DHT dht(DHT_PIN, DHTTYPE);
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 oled(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
 // WLAN-Zugangsdaten
-const char* ssid = "CPSLABOR";
-const char* password = "A1234567890";
+const char* ssid = "CPSLABOR-Z";
+const char* password = "Z123456789Z";
 
 WiFiClient client;
 
@@ -34,7 +43,11 @@ void setup(void){
   Serial.begin(115200);
   dht.begin(); // init DHT sensor
   sensors.begin(); // init DS18B20 sensors on OneWire bus
-  
+  if(!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // init OLED display
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  } 
+
   connectWiFi();
      
   // ThingSpeak API wird initialisiert
@@ -72,11 +85,19 @@ void loop(void){
   Serial.print("Sensor 2(*C): "); 
   Serial.println(tmpDHT);
  
+  oled.clearDisplay();
+  oled.setTextSize(1);
+  oled.setTextColor(WHITE);
+  oled.setCursor(0, 0);
+  oled.println("DS: " + tmpDS);
+  oled.println("DHT: " + tmpDHT);
+  oled.display(); 
+
   ThingSpeak.setField(1, tmpDS);
   ThingSpeak.setField(2, tmpDHT);
   int ret = ThingSpeak.writeFields(tsChannelNumber, tsWriteAPIKey);
    
-   if(ret == 200){
+  if(ret == 200){
     Serial.println("Channel update successful.");
   } else {
     Serial.println("Problem updating channel. HTTP error code " + String(ret));
